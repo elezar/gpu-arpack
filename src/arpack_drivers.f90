@@ -8,60 +8,63 @@ module arpack_driver
 
     implicit none
 
+    private
+
     interface 
-        subroutine SGEMV_wrapper ( N, DATA, x, y ) &
-        bind(c, name='SGEMV_wrapper')
+        subroutine sgemv_wrapper ( N, DATA, x, y ) &
+        bind(c, name='sgemv_wrapper')
         import
-            integer, intent(in) :: N
-            type(c_ptr) :: DATA
-            real(4), intent(in) :: x
-            real(4), intent(out) :: y
-        end subroutine SGEMV_wrapper    
+            integer(c_int), value :: N
+            type(c_ptr), value :: DATA
+            real(c_float), dimension(N), intent(in) :: x
+            real(c_float), dimension(N), intent(out) :: y
+        end subroutine sgemv_wrapper
 
     end interface
+
+    real(4), external :: snrm2, slapy2
+
 
     contains
 ! single precision standard eigenvalue problem
 subroutine arpack_ssev ( n, data, nev, ncv, eigenvalues, eigenvectors, residuals, which )
     
     implicit none
-    CHARACTER(len=2) WHICH
+    character(len=2) which
     ! setup the parameters
-    INTEGER N, NEV, NCV ! matrix size, number of eigenvalues to compute, number of arnoldi vectors
+    integer n, nev, ncv ! matrix size, number of eigenvalues to compute, number of arnoldi vectors
     ! matrices
-    REAL :: &
-        eigenvectors(N, NCV), &
-        residuals (NCV)
-    COMPLEX*8 :: &
-        eigenvalues(NCV)
+    real :: &
+        eigenvectors(n, ncv), &
+        residuals (ncv)
+    complex(kind=8) :: &
+        eigenvalues(ncv)
     
-    type(c_ptr) :: DATA
+    type(c_ptr) :: data
 
     ! local variables
     ! ARPACK arrays
     integer iparam(11), ipntr(14)
-    logical select(NCV)
-    REAL :: &
-        ax(N), e_real(NCV), e_imag(NCV), resid(N), &
-        WORKD(N*3), &
-        WORKEV(3*NCV), &
-        WORKL(3*NCV*NCV + 6*NCV)
+    logical select(ncv)
+    real :: &
+        ax(n), e_real(ncv), e_imag(ncv), resid(n), &
+        workd(n*3), &
+        workev(3*ncv), &
+        workl(3*ncv*ncv + 6*ncv)
 
     ! ARPACK scalars
-    INTEGER ido, LWORKL, INFO, J, &
-            IERR, nconv, maxitr, ishifts, mode, LDA
+    integer ido, lworkl, info, j, &
+            ierr, nconv, maxitr, ishifts, mode, lda
 
-    REAL    tol, one, zero, sigma, temp_res
-    LOGICAL first
-    ! declare the SGEMV wrapper as external
-    !EXTERNAL SGEMV_wrapper
-
+    real    tol, one, zero, sigma, temp_res
+    logical first
+    
     ! initialise constants
     one = (1.0)
     zero = (0.0)
     sigma = (0.0)
     ! initialise ARPACK parameters
-    LWORKL = 3*NCV*NCV + 6*NCV
+    lworkl = 3*ncv*ncv + 6*ncv
     tol    = 0.0
     ido    = 0
     INFO   = 0
@@ -87,7 +90,7 @@ subroutine arpack_ssev ( n, data, nev, ncv, eigenvalues, eigenvectors, residuals
     !       y = workd(ipntr(2))
     !       the wrapper is provided externally and takes the parameters N, DATA, x, y
     !           DATA contains implemetnation-specific information such as pointers to A or its factors
-            call SGEMV_wrapper ( N, DATA, workd(ipntr(1)), workd(ipntr(2)) )
+            call sgemv_wrapper ( N, DATA, workd(ipntr(1):), workd(ipntr(2):) )
             GO TO 10
         END IF
 
@@ -117,7 +120,7 @@ subroutine arpack_ssev ( n, data, nev, ncv, eigenvalues, eigenvectors, residuals
                 IF ( e_imag(j) .EQ. zero ) THEN
                     !       the wrapper is provided externally and takes the parameters N, DATA, x, y
                     !           DATA contains implemetnation-specific information such as pointers to A or its factors
-                    call SGEMV_wrapper ( N, DATA, eigenvectors(1,j), ax )
+                    call sgemv_wrapper ( N, DATA, eigenvectors(1,j), ax )
                     call saxpy (N, -e_real(j), eigenvectors(1,j), 1, ax, 1)
                     temp_res = snrm2 (N, ax, 1)
 
@@ -126,14 +129,14 @@ subroutine arpack_ssev ( n, data, nev, ncv, eigenvalues, eigenvectors, residuals
                 ELSE IF ( first ) THEN
                     !       the wrapper is provided externally and takes the parameters N, DATA, x, y
                     !           DATA contains implemetnation-specific information such as pointers to A or its factors
-                    call SGEMV_wrapper ( N, DATA, eigenvectors(1,j), ax )
+                    call sgemv_wrapper ( N, DATA, eigenvectors(1,j), ax )
                     call saxpy (N, -e_real(j), eigenvectors(1,j), 1, ax, 1)
                     call saxpy (N, e_imag(j), eigenvectors(1,j+1), 1, ax, 1)
                     temp_res = snrm2(N, ax, 1)
 
                     !       the wrapper is provided externally and takes the parameters N, DATA, x, y
                     !           DATA contains implemetnation-specific information such as pointers to A or its factors
-                    call SGEMV_wrapper ( N, DATA, eigenvectors(1,j+1), ax )
+                    call sgemv_wrapper ( N, DATA, eigenvectors(1,j+1), ax )
                     call saxpy (N, -e_real(j), eigenvectors(1,j+1), 1, ax, 1)
                     call saxpy (N, -e_imag(j), eigenvectors(1,j), 1, ax, 1)
                     temp_res = slapy2( temp_res, snrm2(n, ax, 1) )
@@ -159,5 +162,5 @@ subroutine arpack_ssev ( n, data, nev, ncv, eigenvalues, eigenvectors, residuals
     END IF
 
     end subroutine arpack_ssev
-    
+
 end module arpack_driver
