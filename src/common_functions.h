@@ -212,6 +212,7 @@ void get_smallest_magnitude_eigenvalues ( int N, int NEV, int num_calculated, fl
 
 void calculate_eigen_values ( int N, void* DATA, int NEV, float shift, float* eigenvalues, float* eigenvectors, char* which )
 {
+    int i;
     int use_N_ev = 2*NEV;
     if ( use_N_ev > ( N/2 - 1 ) )
         use_N_ev = N/2 - 1;
@@ -227,17 +228,27 @@ void calculate_eigen_values ( int N, void* DATA, int NEV, float shift, float* ei
     float* residuals = (float*)malloc ( (use_N_ev)*sizeof(float));
 
     // solve the eigenvalue problem using ARPACK
-    arpack_ssev_( (int*)&N, (void*)DATA, &use_N_ev, &NCV, temp_ev, temp_vectors, temp_residuals, which );
+    arpack_ssev(N, (void*)DATA, use_N_ev, NCV, temp_ev, temp_vectors, temp_residuals, which );
 
-    // post process the eigenvalues
-    get_smallest_magnitude_eigenvalues ( N, NEV, use_N_ev, shift,
-                                         (float_complex*)eigenvalues, eigenvectors, residuals,
-                                         (float_complex*)temp_ev, temp_vectors, temp_residuals );
+    
+    // Copy the resultant eigenvalues
+    memcpy(eigenvalues, temp_ev, NEV*2*sizeof(float));
+    memcpy(eigenvectors, temp_vectors, NEV*N*sizeof(float));
+
+    for (i=0; i < NEV; ++i)
+    {
+        printf("%d: %f\n", i, temp_residuals[i] );
+    }
+
     // free the temporary storage
     free ( temp_ev );
+    printf("1:\n");
     free ( temp_vectors );
+    printf("2:\n");
     free ( temp_residuals );
+    printf("3:\n");
     free ( residuals );
+    printf("4:\n");
 }
 
 void calculate_desired_eigenvalues ( int N, void* DATA, int NEV, float shift, float* eigenvalues, float* eigenvectors  )
@@ -261,7 +272,7 @@ void calculate_desired_eigenvalues ( int N, void* DATA, int NEV, float shift, fl
 #ifdef DEBUG_OUTPUT
     printf( "N=%d, use_N_ev = %d, NCV = %d, NEV = %d\n", N, use_N_ev, NCV, NEV );
 #endif
-    arpack_ssev_( (int*)&N, (void*)DATA, &use_N_ev, &NCV, (float*)temp_ev, temp_vectors, temp_residuals, "LR" );
+    arpack_ssev( (int*)&N, (void*)DATA, &use_N_ev, &NCV, (float*)temp_ev, temp_vectors, temp_residuals, "LR" );
     // free the temporary storage
 
 

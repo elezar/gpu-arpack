@@ -22,25 +22,27 @@ module arpack_driver
 
     end interface
 
+    ! External LAPACK FORTRAN function.
     real(4), external :: snrm2, slapy2
 
 
     contains
 ! single precision standard eigenvalue problem
-subroutine arpack_ssev ( n, data, nev, ncv, eigenvalues, eigenvectors, residuals, which )
+subroutine arpack_ssev ( n, data, nev, ncv, eigenvalues, eigenvectors, residuals, which ) &
+bind(c, name='arpack_ssev')
     
     implicit none
-    character(len=2) which
+    character(kind=c_char) :: which(2)
     ! setup the parameters
-    integer n, nev, ncv ! matrix size, number of eigenvalues to compute, number of arnoldi vectors
+    integer(c_int), value :: n, nev, ncv ! matrix size, number of eigenvalues to compute, number of arnoldi vectors
     ! matrices
-    real :: &
+    real(c_float) :: &
         eigenvectors(n, ncv), &
         residuals (ncv)
-    complex(kind=8) :: &
+    complex(c_float) :: &
         eigenvalues(ncv)
     
-    type(c_ptr) :: data
+    type(c_ptr), value :: data
 
     ! local variables
     ! ARPACK arrays

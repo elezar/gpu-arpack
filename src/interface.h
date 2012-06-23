@@ -19,10 +19,7 @@
 
 EXT
 // definition of the ARPACK routine
-void arpack_ssev_ ( int* N, void* DATA, int* NEV, int* NCV, float* eigenvalues, float* eigenvectors, float* residuals, char* which );
-
-EXT
-void sgemv_wrapper_ ( int* N, void** DATA, float* x, float* y );
+void arpack_ssev ( int N, void* DATA, int NEV, int NCV, float* eigenvalues, float* eigenvectors, float* residuals, char* which );
 
 EXT
 int dense_gev ( int N, float* A, float* B, int LDMAT,

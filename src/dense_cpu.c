@@ -31,21 +31,20 @@ void print_data ( const char* desc, data_struct DATA )
     printf ( "%s: A = %p LDA = %d\n", desc, DATA.A, DATA.LDA );
 }
 
-void sgemv_wrapper ( int N, void** DATA, float* x, float* y )
+void sgemv_wrapper ( int N, data_struct* DATA, float* x, float* y )
 {
     checkpoint t0 = tic();
-    data_struct* pDATA = (data_struct*)DATA;
     // read the relevant data from the struct
-    float* A = pDATA->A;
-    int LDA = pDATA->LDA;
-
+    float* A = DATA->A;
+    int LDA = DATA->LDA;
+    printf("%d %p\n", LDA, A);
     float f_one = 1.0f;
     float f_zero = 0.0f;
     int i_one = 1;
     // calculate y <-- Ax
-    sgemv_ ( "N", N, N, &f_one, A, &LDA, x, &i_one, &f_zero, y, &i_one, 1 );
-    pDATA->sgemv_time += toc ( t0 );
-    pDATA->sgemv_calls += 1;
+    sgemv_ ( "N", &N, &N, &f_one, A, &LDA, x, &i_one, &f_zero, y, &i_one, 1 );
+    DATA->sgemv_time += toc ( t0 );
+    DATA->sgemv_calls += 1;
 }
 
 void setup_S_and_T ( int N, float* S, float* T, int LDMAT, float shift, double* timing_data )
@@ -66,6 +65,7 @@ void setup_S_and_T ( int N, float* S, float* T, int LDMAT, float shift, double* 
 
 void init_data ( data_struct* DATA, float* S, int LDMAT )
 {
+    printf("%d %p\n", LDMAT, S);
     DATA->A = S;
     DATA->LDA = LDMAT;
     DATA->sgemv_calls = 0;
@@ -80,16 +80,17 @@ int dense_sgev ( int N, float* S, float* T, int LDMAT, int NEV, float shift, flo
     int result = 0;
 
     // apply the shift to the matrices
-    setup_S_and_T ( N, S, T, LDMAT, shift, timing_data_10 );
+    //setup_S_and_T ( N, S, T, LDMAT, shift, timing_data_10 );
     data_struct DATA;
     init_data( &DATA, S, LDMAT );
 
     t0 = tic();
-    calculate_eigen_values ( N, &DATA, NEV, shift, eigenvalues, eigenvectors, "SR" );
+    calculate_eigen_values ( N, &DATA, NEV, shift, eigenvalues, eigenvectors, "LM" );
     timing_data_10[ARPACK_CALL] = toc( t0 );
 
     timing_data_10[SGEMV] = DATA.sgemv_time;
     int_data_10[SGEMV] = DATA.sgemv_calls;
     return result;
 }
+
 
