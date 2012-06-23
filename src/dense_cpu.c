@@ -11,7 +11,6 @@
 #include <acml.h>
 
 #include "interface.h"
-#include "common_functions.h"
 
 #define ARPACK_CALL 0
 #define SHIFT 1
@@ -37,7 +36,6 @@ void sgemv_wrapper ( int N, data_struct* DATA, float* x, float* y )
     // read the relevant data from the struct
     float* A = DATA->A;
     int LDA = DATA->LDA;
-    printf("%d %p\n", LDA, A);
     float f_one = 1.0f;
     float f_zero = 0.0f;
     int i_one = 1;
@@ -47,45 +45,57 @@ void sgemv_wrapper ( int N, data_struct* DATA, float* x, float* y )
     DATA->sgemv_calls += 1;
 }
 
-void setup_S_and_T ( int N, float* S, float* T, int LDMAT, float shift, double* timing_data )
+void init_data ( data_struct* DATA, float* A, int LDMAT )
 {
-    // first perform the shift-invert process using LAPACK
-    // T = T - shift*S
-    checkpoint t0 = tic();
-    apply_shift ( N, S, T, LDMAT, shift );
-    timing_data[SHIFT] = toc(t0);
-    t0 = tic();
-    // perform the LU decomposition of T
-    int IPIV[N];
-    int INFO;
-    // solve using the LU decomposition
-    sgesv_( (int*)&N, (int*)&N, T, (int*)&LDMAT, IPIV, S, (int*)&LDMAT, &INFO );
-    timing_data[SGETRF_S] = toc(t0);
-}
-
-void init_data ( data_struct* DATA, float* S, int LDMAT )
-{
-    printf("%d %p\n", LDMAT, S);
-    DATA->A = S;
+    DATA->A = A;
     DATA->LDA = LDMAT;
     DATA->sgemv_calls = 0;
     DATA->sgemv_time = 0.0;
 }
 
-// solve the eigen system Sx = lTx
-int dense_sgev ( int N, float* S, float* T, int LDMAT, int NEV, float shift, float* eigenvalues, float* eigenvectors, double* timing_data_10, int* int_data_10 )
+
+void calculate_eigen_values ( int N, void* DATA, int NEV, float* eigenvalues, float* eigenvectors, char* which )
+{
+    int use_N_ev = 2*NEV;
+    if ( use_N_ev > ( N/2 - 1 ) )
+        use_N_ev = N/2 - 1;
+    // select the number of Arnoldi vectors to generate
+    int NCV = 2*use_N_ev + 1;
+    if ( NCV > N )
+        NCV = N;
+
+    // allocate temporary storage for the vectors
+    float* temp_ev = (float*)malloc ( NCV*2*sizeof(float) );
+    float* temp_vectors = (float*) malloc (N*NCV*sizeof(float));
+    float* temp_residuals = (float*)malloc ( (NCV )*sizeof(float));
+
+    // solve the eigenvalue problem using ARPACK
+    arpack_ssev(N, (void*)DATA, use_N_ev, NCV, temp_ev, temp_vectors, temp_residuals, which );
+    
+    // Copy the resultant eigenvalues to the previously allocated space.
+    memcpy(eigenvalues, temp_ev, NEV*2*sizeof(float));
+    memcpy(eigenvectors, temp_vectors, NEV*N*sizeof(float));
+
+    // free the temporary storage
+    free ( temp_ev );
+    free ( temp_vectors );
+    free ( temp_residuals );
+}
+
+
+// solve the standard eigensystem Ax = lx
+int dense_seev ( int N, float* A, int LDMAT, int NEV, float* eigenvalues, float* eigenvectors, double* timing_data_10, int* int_data_10 )
 {
     checkpoint t0;
-    printf ( "dense_gev: %d %d %f\n", N, LDMAT, shift );
     int result = 0;
 
-    // apply the shift to the matrices
-    //setup_S_and_T ( N, S, T, LDMAT, shift, timing_data_10 );
+    // Initialise the data structure that is passed to the ARPACK routines.
     data_struct DATA;
-    init_data( &DATA, S, LDMAT );
+    init_data( &DATA, A, LDMAT );
 
     t0 = tic();
-    calculate_eigen_values ( N, &DATA, NEV, shift, eigenvalues, eigenvectors, "LM" );
+    // Call a C wrapper function that allows for the calculation of the NEV largest eigenvalues.
+    calculate_eigen_values ( N, &DATA, NEV, eigenvalues, eigenvectors, "LM" );
     timing_data_10[ARPACK_CALL] = toc( t0 );
 
     timing_data_10[SGEMV] = DATA.sgemv_time;
