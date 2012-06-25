@@ -17,14 +17,19 @@
 #define SGETRF_S 2
 #define SGEMV 9
 
+//!
+//! A data structure used to pass the eigenproblem configuration to Fortran and 
+//! back to C again.
 struct data_struct {
-    float* A;
-    double sgemv_time;
-    int sgemv_calls;
-    int LDA;
+    float* A;           //! A pointer to the matrix representing the eigenproblem.
+    double sgemv_time;  //! The total time required to calculate the matrix-vector products.
+    int sgemv_calls;    //! The number of times the matrix-vector product was called.
+    int LDA;            //! The leading dimension of the matrix.
 };
 typedef struct data_struct data_struct;
 
+//! 
+//! A utility function to print the structure representing the eigenproblem.
 void print_data ( const char* desc, data_struct DATA )
 {
     printf ( "%s: A = %p LDA = %d\n", desc, DATA.A, DATA.LDA );
