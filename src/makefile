@@ -7,7 +7,7 @@ OBJ_EXT=.o
 LIB_ARPACK=-larpack
 ACML_PATH=/opt/acml5.1.0/gfortran64
 INC=-I$(ACML_PATH)/include
-LIB_BLAS_LAPACK=-L$(ACML_PATH)/lib -lacml
+LIB_BLAS_LAPACK=-lblas -llapack
 
 LIBS=$(LIB_ARPACK) $(LIB_BLAS_LAPACK)
 #LIB_BLAS_LAPACK=-lblas -llapack

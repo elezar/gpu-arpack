@@ -7,7 +7,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <omp.h>
-#include <acml.h>
+#include <cblas.h>
+// #include <acml.h>
 
 // Include the interfaces to the Fortran routines.
 #include "interface.h"
@@ -49,11 +50,8 @@ void sgemv_wrapper ( int N, data_struct* DATA, float* x, float* y )
     // read the relevant data from the struct
     float* A = DATA->A;
     int LDA = DATA->LDA;
-    float f_one = 1.0f;
-    float f_zero = 0.0f;
-    int i_one = 1;
     // calculate y <-- Ax
-    sgemv_ ( "N", &N, &N, &f_one, A, &LDA, x, &i_one, &f_zero, y, &i_one, 1 );
+    cblas_sgemv ( CblasColMajor, CblasNoTrans, N, N, 1.0, A, LDA, x, 1, 0.0, y, 1);
     DATA->sgemv_time += toc ( t0 );
     DATA->sgemv_calls += 1;
 }
